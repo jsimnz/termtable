@@ -19,6 +19,8 @@ type Table struct {
 
 	hasRendered     bool
 	numRenderedRows int
+
+	dynamicRows map[int]bool
 }
 
 type TableOptions struct {
@@ -33,7 +35,8 @@ var defaultTableOptions = &TableOptions{
 
 func NewTable(rows [][]string, options *TableOptions) *Table {
 	t := &Table{
-		Options: options,
+		Options:     options,
+		dynamicRows: make(map[int]bool),
 	}
 	if t.Options == nil {
 		t.Options = defaultTableOptions
@@ -59,7 +62,6 @@ func (t *Table) AddRow(row []string) {
 	} else {
 		t.computeProperties()
 	}
-	t.numRenderedRows++
 }
 
 func (t *Table) computeProperties() {
@@ -108,7 +110,7 @@ func (t *Table) Render() string {
 			buf.WriteRune('\n')
 		}
 	} else {
-		i = t.numRenderedRows
+		i = t.numRenderedRows + 1
 		fmt.Printf("\033[1A")
 	}
 
@@ -121,6 +123,7 @@ func (t *Table) Render() string {
 			buf.WriteRune('\n')
 		}
 		i++
+		t.numRenderedRows++
 	}
 
 	if t.Options.UseSeparator {
@@ -144,6 +147,12 @@ func (t *Table) separatorLine() string {
 
 func (t *Table) getCell(row, col int) string {
 	cellContent := t.Rows[row][col]
+	if t.hasRendered {
+		colWidth := t.columnsWidth[col]
+		if len(cellContent) > colWidth {
+			cellContent = t.handleCellOverflow(row, col)
+		}
+	}
 	spacePadding := strings.Repeat(" ", t.Options.Padding)
 
 	var cellStr string
@@ -164,4 +173,30 @@ func (t *Table) getCell(row, col int) string {
 	}
 
 	return cellStr
+}
+
+// If a dynamic row has a greater width then the current computed length for
+// the given column, trim and wrapped to the next row down
+func (t *Table) handleCellOverflow(row, col int) string {
+	origCellContent := t.Rows[row][col]
+
+	index := t.columnsWidth[col]
+	if tindex := strings.LastIndex(origCellContent[:index], " "); tindex != -1 {
+		if _, ok := t.dynamicRows[row]; !ok || (ok && tindex != 1) {
+			index = tindex
+		}
+	}
+
+	// trim content, create new row
+	newCellContent := origCellContent[:index]
+	newRow := make([]string, t.numColumns)
+	newRow[col] = "> " + strings.Trim(origCellContent[index:], " ")
+
+	// insert new row into it's appropriate spot
+	//t.AddRow(newRow)
+	newRows := append(t.Rows[:row], newRow)
+	t.Rows = append(newRows, t.Rows[row:]...)
+	t.dynamicRows[row+1] = true
+
+	return newCellContent
 }
