@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/stevedomin/termtable"
+	"github.com/jsimnz/termtable"
 )
 
 func main() {
@@ -37,4 +37,32 @@ func main() {
 	t.AddRow([]string{"defg", "EFGHI", "678"})
 	t.AddRow([]string{"hijkl", "JKL", "9000"})
 	fmt.Println(t.Render())
+
+	fmt.Println("\nSimple table w/ seperators, custom padding, and dynamic rows:")
+
+	t = termtable.NewTable(nil, &termtable.TableOptions{
+		Padding:      3,
+		UseSeparator: true,
+	})
+	t.SetHeader([]string{"LOWERCASE", "UPPERCASE", "NUMBERS"})
+	t.AddRow([]string{"abc", "ABCD", "12345"})
+	t.AddRow([]string{"defg", "EFGHI", "678"})
+	t.AddRow([]string{"hijkl", "JKL", "9000"})
+	fmt.Println(t.Render())
+	t.AddRow([]string{"mnop", "MNO", "479108"})
+	fmt.Println(t.RenderDynamic())
+
+	fmt.Println("\nSimple table w/ seperators, custom padding, dynamic rows, and overlapping:")
+
+	t = termtable.NewTable(nil, &termtable.TableOptions{
+		Padding:      3,
+		UseSeparator: true,
+	})
+	t.SetHeader([]string{"LOWERCASE", "UPPERCASE", "NUMBERS"})
+	t.AddRow([]string{"abc", "ABCD", "12345"})
+	t.AddRow([]string{"defg", "EFGHI", "678"})
+	t.AddRow([]string{"hijkl", "JKL", "9000"})
+	fmt.Println(t.Render())
+	t.AddRow([]string{"mnop", "MASDADADNO", "47910987978"})
+	fmt.Println(t.RenderDynamic())
 }
