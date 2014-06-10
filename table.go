@@ -2,6 +2,7 @@ package termtable
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"strings"
 )
@@ -15,6 +16,9 @@ type Table struct {
 
 	numColumns   int
 	columnsWidth []int
+
+	hasRendered     bool
+	numRenderedRows int
 }
 
 type TableOptions struct {
@@ -50,7 +54,12 @@ func (t *Table) SetHeader(header []string) {
 
 func (t *Table) AddRow(row []string) {
 	t.Rows = append(t.Rows, row)
-	t.computeProperties()
+	if t.hasRendered {
+		// dynamicly format row
+	} else {
+		t.computeProperties()
+	}
+	t.numRenderedRows++
 }
 
 func (t *Table) computeProperties() {
@@ -81,21 +90,26 @@ func (t *Table) Render() string {
 
 	i := 0
 
-	if t.HasHeader {
+	if !t.hasRendered {
+		if t.HasHeader {
+			if t.Options.UseSeparator {
+				buf.WriteString(t.separatorLine())
+				buf.WriteRune('\n')
+			}
+			for j := range t.Rows[0] {
+				buf.WriteString(t.getCell(i, j))
+			}
+			i = 1
+			buf.WriteRune('\n')
+		}
+
 		if t.Options.UseSeparator {
 			buf.WriteString(t.separatorLine())
 			buf.WriteRune('\n')
 		}
-		for j := range t.Rows[0] {
-			buf.WriteString(t.getCell(i, j))
-		}
-		i = 1
-		buf.WriteRune('\n')
-	}
-
-	if t.Options.UseSeparator {
-		buf.WriteString(t.separatorLine())
-		buf.WriteRune('\n')
+	} else {
+		i = t.numRenderedRows
+		fmt.Printf("\033[1A")
 	}
 
 	for i < len(t.Rows) {
@@ -113,6 +127,8 @@ func (t *Table) Render() string {
 		buf.WriteRune('\n')
 		buf.WriteString(t.separatorLine())
 	}
+
+	t.hasRendered = true
 
 	return buf.String()
 }
