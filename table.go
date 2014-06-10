@@ -2,8 +2,6 @@ package termtable
 
 import (
 	"bytes"
-	"fmt"
-	//"log"
 	"math"
 	"strings"
 )
@@ -113,7 +111,7 @@ func (t *Table) Render() string {
 		buf.WriteRune('\n')
 	}
 
-	for i < len(t.Rows)-t.numDynRows {
+	for i < len(t.Rows) {
 		row := t.Rows[i]
 		for j := range row {
 			buf.WriteString(t.getCell(i, j))
@@ -147,7 +145,7 @@ func (t *Table) RenderDynamic() string {
 
 	i := t.numRenderedRows
 	if t.Options.UseSeparator {
-		fmt.Printf("\033[1A")
+		buf.WriteString("\033[1A")
 	}
 
 	for i < len(t.Rows) {

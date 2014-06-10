@@ -55,7 +55,8 @@ func main() {
 	fmt.Println("\nSimple table w/ seperators, custom padding, dynamic rows, and column wrapping:")
 
 	t = termtable.NewTable(nil, &termtable.TableOptions{
-		Padding: 3,
+		Padding:      3,
+		UseSeparator: true,
 	})
 	t.SetHeader([]string{"LOWERCASE", "UPPERCASE", "NUMBERS"})
 	t.AddRow([]string{"abc", "ABCD", "12345"})
