@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/jsimnz/termtable"
+	"github.com/stevedomin/termtable"
 )
 
 func main() {
