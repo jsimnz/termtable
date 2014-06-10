@@ -230,10 +230,12 @@ func (t *Table) handleCellOverflow(row, col int) string {
 	} else {
 		newRow := make([]string, t.numColumns)
 		newRow[col] = newCellContent
+		i := row + 1
+		// insert new row into it's appropriate spotgit st
+		t.Rows = append(t.Rows, []string{})
+		copy(t.Rows[i+1:], t.Rows[i:])
+		t.Rows[i] = newRow
 
-		// insert new row into it's appropriate spot
-		newRows := append(t.Rows[:row+1], newRow)
-		t.Rows = append(newRows, t.Rows[row+1:]...)
 		t.dynamicRows[row+1] = true
 	}
 
