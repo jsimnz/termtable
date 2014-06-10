@@ -3,6 +3,7 @@ package termtable
 import (
 	"bytes"
 	"fmt"
+	//"log"
 	"math"
 	"strings"
 )
@@ -20,6 +21,8 @@ type Table struct {
 	hasRendered     bool
 	numRenderedRows int
 
+	isRenderDyn bool
+	numDynRows  int
 	dynamicRows map[int]bool
 }
 
@@ -58,7 +61,7 @@ func (t *Table) SetHeader(header []string) {
 func (t *Table) AddRow(row []string) {
 	t.Rows = append(t.Rows, row)
 	if t.hasRendered {
-		// dynamicly format row
+		t.numDynRows++
 	} else {
 		t.computeProperties()
 	}
@@ -86,33 +89,64 @@ func (t *Table) recalculate() {
 }
 
 func (t *Table) Render() string {
+	t.isRenderDyn = false
 	// allocate a 1k byte buffer
 	bb := make([]byte, 0, 1024)
 	buf := bytes.NewBuffer(bb)
 
 	i := 0
 
-	if !t.hasRendered {
-		if t.HasHeader {
-			if t.Options.UseSeparator {
-				buf.WriteString(t.separatorLine())
-				buf.WriteRune('\n')
-			}
-			for j := range t.Rows[0] {
-				buf.WriteString(t.getCell(i, j))
-			}
-			i = 1
-			buf.WriteRune('\n')
-		}
-
+	if t.HasHeader {
 		if t.Options.UseSeparator {
 			buf.WriteString(t.separatorLine())
 			buf.WriteRune('\n')
 		}
-	} else {
-		i = t.numRenderedRows + 1
-		fmt.Printf("\033[1A")
+		for j := range t.Rows[0] {
+			buf.WriteString(t.getCell(i, j))
+		}
+		i = 1
+		buf.WriteRune('\n')
 	}
+
+	if t.Options.UseSeparator {
+		buf.WriteString(t.separatorLine())
+		buf.WriteRune('\n')
+	}
+
+	for i < len(t.Rows)-t.numDynRows {
+		row := t.Rows[i]
+		for j := range row {
+			buf.WriteString(t.getCell(i, j))
+		}
+		if i < len(t.Rows)-t.numDynRows-1 {
+			buf.WriteRune('\n')
+		}
+		i++
+		t.numRenderedRows++
+	}
+
+	if t.Options.UseSeparator {
+		buf.WriteRune('\n')
+		buf.WriteString(t.separatorLine())
+	}
+
+	t.hasRendered = true
+
+	return buf.String()
+}
+
+func (t *Table) RenderDynamic() string {
+	if t.numDynRows == 0 {
+		return t.Render()
+	}
+	t.isRenderDyn = true
+
+	// allocate a 1k byte buffer
+	bb := make([]byte, 0, 1024)
+	buf := bytes.NewBuffer(bb)
+
+	i := t.numRenderedRows
+	fmt.Printf("\033[1A")
 
 	for i < len(t.Rows) {
 		row := t.Rows[i]
@@ -131,8 +165,6 @@ func (t *Table) Render() string {
 		buf.WriteString(t.separatorLine())
 	}
 
-	t.hasRendered = true
-
 	return buf.String()
 }
 
@@ -147,7 +179,8 @@ func (t *Table) separatorLine() string {
 
 func (t *Table) getCell(row, col int) string {
 	cellContent := t.Rows[row][col]
-	if t.hasRendered {
+	//log.Println(cellContent)
+	if t.isRenderDyn {
 		colWidth := t.columnsWidth[col]
 		if len(cellContent) > colWidth {
 			cellContent = t.handleCellOverflow(row, col)
@@ -182,21 +215,27 @@ func (t *Table) handleCellOverflow(row, col int) string {
 
 	index := t.columnsWidth[col]
 	if tindex := strings.LastIndex(origCellContent[:index], " "); tindex != -1 {
-		if _, ok := t.dynamicRows[row]; !ok || (ok && tindex != 1) {
+		_, isDynRow := t.dynamicRows[row]
+		if !isDynRow || (isDynRow && tindex != 1) {
 			index = tindex
 		}
 	}
 
 	// trim content, create new row
-	newCellContent := origCellContent[:index]
-	newRow := make([]string, t.numColumns)
-	newRow[col] = "> " + strings.Trim(origCellContent[index:], " ")
+	trimCellContent := origCellContent[:index]
+	newCellContent := "> " + strings.Trim(origCellContent[index:], " ")
+	_, isNextDynRow := t.dynamicRows[row+1]
+	if isNextDynRow {
+		t.Rows[row+1][col] = newCellContent
+	} else {
+		newRow := make([]string, t.numColumns)
+		newRow[col] = newCellContent
 
-	// insert new row into it's appropriate spot
-	//t.AddRow(newRow)
-	newRows := append(t.Rows[:row], newRow)
-	t.Rows = append(newRows, t.Rows[row:]...)
-	t.dynamicRows[row+1] = true
+		// insert new row into it's appropriate spot
+		newRows := append(t.Rows[:row+1], newRow)
+		t.Rows = append(newRows, t.Rows[row+1:]...)
+		t.dynamicRows[row+1] = true
+	}
 
-	return newCellContent
+	return trimCellContent
 }
