@@ -146,7 +146,9 @@ func (t *Table) RenderDynamic() string {
 	buf := bytes.NewBuffer(bb)
 
 	i := t.numRenderedRows
-	fmt.Printf("\033[1A")
+	if t.Options.UseSeparator {
+		fmt.Printf("\033[1A")
+	}
 
 	for i < len(t.Rows) {
 		row := t.Rows[i]
